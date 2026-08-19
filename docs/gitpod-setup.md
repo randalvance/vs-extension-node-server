@@ -135,6 +135,90 @@ Host github.com
   ProxyCommand nc -X connect -x 127.0.0.1:8899 %h %p
 ```
 
+## Browser-based logins (SSO, OAuth, PingOne)
+
+This one catches people out, because it needs the **opposite** of what this
+proxy does — and the proxy cannot help with it.
+
+| | Direction | Purpose |
+|---|---|---|
+| This proxy | workspace → internet, via your laptop | Egress |
+| A browser login | your laptop's browser → workspace's `localhost` | Receiving the callback |
+
+A forward proxy only carries outbound requests. Your browser reaching *into* the
+workspace is **port forwarding**, a separate mechanism — and one VS Code Remote
+already does for you.
+
+### Why the callback needs it
+
+A CLI doing OIDC uses a loopback redirect (RFC 8252):
+
+1. The tool, **in the workspace**, listens on `http://localhost:8080/callback`.
+2. It opens the provider's authorize URL.
+3. You sign in **in your laptop's browser** — that is where your MFA, passkeys,
+   and existing SSO session live.
+4. The provider redirects your **laptop** browser to
+   `http://localhost:8080/callback?code=...`.
+5. The tool exchanges that code for tokens.
+
+Step 4 is the catch: the browser hits *your laptop's* loopback, but the listener
+is in the workspace. Port forwarding bridges the two — VS Code notices something
+listening on 8080 in the workspace and binds 8080 on your laptop, tunnelling it
+down the connection you already have.
+
+In practice: **start the login from a terminal inside VS Code while connected to
+the workspace**, and it generally works. Check the Ports panel to confirm the
+port is forwarded.
+
+### What goes wrong, roughly by frequency
+
+**Port already taken on your laptop.** If your laptop's 8080 is busy, VS Code
+forwards to 8081 instead and says nothing, so the redirect to `localhost:8080`
+reaches some other process. The symptom is a login that completes in the browser
+and then hangs forever. Free the port, or pin the mapping in the Ports panel.
+
+**The tool picks a random port.** Auto-forwarding usually catches it, but a port
+chosen after the browser opens can lose the race. If the tool takes a `--port`
+flag, set one.
+
+**Redirect URI mismatch.** It must match your provider's registered value
+exactly. `http://localhost:8080/callback` and `http://127.0.0.1:8080/callback`
+are different strings to an OIDC provider.
+
+**No browser in the workspace.** If the tool tries to launch one and fails, copy
+the URL and paste it into your laptop browser yourself. VS Code Remote normally
+points `$BROWSER` at a shim that opens locally.
+
+**The provider requires an HTTPS redirect.** Loopback `http://` will be refused
+for that app type. You would need the workspace's public port URL as the
+redirect instead, which changes per workspace and is awkward to register.
+
+### Prefer the device code flow where you can
+
+If the provider supports the **Device Authorization Grant** (RFC 8628) — PingOne
+among others does — use it. The tool prints a code and a URL, you open it on any
+device, and there is **no callback listener at all**: no port to forward, no
+collision, nothing to bridge. It exists for exactly this situation. Worth
+checking for a `--device-code` option before fighting the loopback flow.
+
+### Where this proxy still matters
+
+Two things, both secondary to the login itself:
+
+- **The back channel.** After the callback, the tool calls the provider's token
+  endpoint directly from the workspace. If the workspace has no internet of its
+  own, that request goes through this proxy.
+- **A trap the generated snippet avoids.** With `HTTP_PROXY` set and no
+  exclusion for loopback, the tool's own request to `http://localhost:8080`
+  would be sent out through the proxy — which blocks loopback destinations by
+  default, failing the login for a reason that looks nothing like the cause.
+  The snippet in this guide sets
+  `NO_PROXY=localhost,127.0.0.1,::1,.internal` for that reason. Keep that line.
+
+Do not expect the traffic inspector to show you the login. The provider is
+HTTPS, so it appears only as `CONNECT auth.example.com:443`, and the one
+plaintext part — the `localhost` callback — deliberately bypasses the proxy.
+
 ## Troubleshooting
 
 **`curl: (56) CONNECT tunnel failed, response 403`** — the proxy refused the
@@ -150,6 +234,10 @@ that is genuinely what you want.
 
 **`Warning: remote port forwarding failed for listen port 8899`** — something in
 the workspace already holds that port. Pick another and change both sides.
+
+**A browser login hangs after you sign in** — most often the callback port is
+already in use on your laptop, so VS Code forwarded the workspace's port to a
+different local one. See [Browser-based logins](#browser-based-logins-sso-oauth-pingone).
 
 **The tunnel drops whenever the laptop sleeps** — expected. macOS suspends
 network connections on sleep. Re-run the SSH command, or use Tailscale, which

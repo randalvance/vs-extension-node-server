@@ -203,6 +203,16 @@ public IP.
 ngrok TCP), the tools that ignore `HTTP_PROXY` and what to do about them, and
 troubleshooting.
 
+### Browser logins are the other direction
+
+If you need an SSO or OAuth login from the workspace — PingOne, Okta, a cloud
+CLI — this proxy is not what carries it. The provider redirects *your laptop's*
+browser to a `localhost` callback that the workspace is listening on, which is
+inbound port forwarding, not egress. VS Code Remote already does it; see
+[Browser-based logins](docs/gitpod-setup.md#browser-based-logins-sso-oauth-pingone)
+for the setup, the failure modes, and why the device code flow avoids the
+problem entirely.
+
 ## Security defaults
 
 This proxy gets exposed to a remote machine, so the defaults lean closed:
