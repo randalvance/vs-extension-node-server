@@ -18,6 +18,7 @@ const { ProxyServer } = require('./src/proxy');
 const { ConfigError } = require('./src/config');
 const { workspaceEnvSnippet, tunnelCommand } = require('./src/client-config');
 const { InspectorPanel } = require('./inspector-panel');
+const { toHar } = require('./src/har');
 
 const PASSWORD_SECRET_KEY = 'gitpodProxy.password';
 
@@ -39,6 +40,7 @@ function activate(context) {
     context.subscriptions.push(vscode.commands.registerCommand(id, handler));
 
   register('gitpodProxy.showInspector', () => showInspector(context));
+  register('gitpodProxy.exportHar', () => exportHar());
   register('gitpodProxy.start', () => start());
   register('gitpodProxy.stop', () => stop({ announce: true }));
   register('gitpodProxy.restart', () => restart());
@@ -206,6 +208,7 @@ async function showMenu() {
         { label: '$(debug-restart) Restart proxy', command: 'gitpodProxy.restart' },
         { label: '$(clippy) Copy workspace configuration', command: 'gitpodProxy.copyWorkspaceConfig' },
         { label: '$(terminal) Copy SSH tunnel command', command: 'gitpodProxy.copyTunnelCommand' },
+        { label: '$(save) Export traffic as HAR', command: 'gitpodProxy.exportHar' },
         { label: '$(graph) Show traffic stats', command: 'gitpodProxy.showStats' },
         { label: '$(output) Show log', command: 'gitpodProxy.showLog' },
       ]
@@ -244,6 +247,46 @@ async function copyTunnelCommand() {
       ? 'SSH tunnel command copied.'
       : 'SSH tunnel command copied — replace <workspace-ssh-target> with your workspace, or set gitpodProxy.sshTarget.',
   );
+}
+
+/**
+ * Write the recorded traffic to a HAR file. Opening that file in Chrome
+ * DevTools, Charles, Proxyman, or Postman gives a far richer read of it than
+ * this panel does, and it travels — you can hand it to someone else.
+ */
+async function exportHar() {
+  if (!requireRunning()) return;
+
+  const har = toHar(server.recorder.list());
+  if (har.log.entries.length === 0) {
+    vscode.window.showWarningMessage(
+      'No completed transactions to export yet. Open the traffic inspector and let some requests through first.',
+    );
+    return;
+  }
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const target = await vscode.window.showSaveDialog({
+    title: 'Export proxy traffic as HAR',
+    defaultUri: vscode.Uri.file(`proxy-traffic-${stamp}.har`),
+    filters: { 'HTTP Archive': ['har'] },
+  });
+  if (!target) return;
+
+  try {
+    const contents = Buffer.from(`${JSON.stringify(har, null, 2)}\n`, 'utf8');
+    await vscode.workspace.fs.writeFile(target, contents);
+    output.appendLine(`Exported ${har.log.entries.length} entries to ${target.fsPath}`);
+
+    const choice = await vscode.window.showInformationMessage(
+      `Exported ${har.log.entries.length} entries. Drag the file into Chrome DevTools' Network panel to explore it.`,
+      'Reveal file',
+    );
+    if (choice === 'Reveal file') vscode.commands.executeCommand('revealFileInOS', target);
+  } catch (error) {
+    output.appendLine(`HAR export failed: ${error.message}`);
+    vscode.window.showErrorMessage(`Could not write the HAR file: ${error.message}`);
+  }
 }
 
 async function showStats() {

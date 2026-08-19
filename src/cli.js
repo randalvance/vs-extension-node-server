@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require('node:fs');
+
 /**
  * Command-line front end: argument parsing, startup banner, signal handling.
  */
@@ -8,6 +10,7 @@ const { ProxyServer } = require('./proxy');
 const { ConfigError } = require('./config');
 const { workspaceEnvSnippet, tunnelCommand } = require('./client-config');
 const { ConsoleReporter, DETAIL_LEVELS } = require('./console-reporter');
+const { toHar } = require('./har');
 
 const USAGE = `
 gitpod-egress-proxy — an HTTP/HTTPS forward proxy for giving a remote
@@ -34,6 +37,8 @@ Options:
       --no-inspect             Drop the network log and fall back to plain
                                timestamped log lines (better for piping to a file).
       --no-color               Plain output with no ANSI colour.
+      --har <file>             On exit, write all traffic to a HAR file. Open it
+                               in Chrome DevTools, Charles, Proxyman, or Postman.
       --log-level <level>      silent | error | warn | info | debug (default info)
       --socket-timeout <ms>    Idle timeout for proxied connections (default 120000)
       --connect-timeout <ms>   Timeout for reaching an upstream host (default 15000)
@@ -65,6 +70,7 @@ const FLAGS = {
   '--connect-timeout': 'connectTimeoutMs',
   '--max-connections': 'maxConnections',
   '--ssh-target': 'sshTarget',
+  '--har': 'harPath',
 };
 
 const BOOLEAN_FLAGS = {
@@ -144,7 +150,7 @@ function describeInspect(inspect) {
   return 'on, with headers and bodies';
 }
 
-function banner(server, sshTarget, inspect) {
+function banner(server, sshTarget, inspect, harPath) {
   const address = server.address();
   const { config } = server;
   const lines = [
@@ -159,6 +165,7 @@ function banner(server, sshTarget, inspect) {
   if (config.allowHosts.length > 0) lines.push(`    allowlist   ${config.allowHosts.join(', ')}`);
   if (config.denyHosts.length > 0) lines.push(`    denylist    ${config.denyHosts.join(', ')}`);
   lines.push(`    network log ${describeInspect(inspect)}`);
+  if (harPath) lines.push(`    har         writing to ${harPath} on exit`);
 
   lines.push(
     '',
@@ -185,6 +192,16 @@ function banner(server, sshTarget, inspect) {
   return lines.join('\n');
 }
 
+function writeHar(harPath, recorder) {
+  const har = toHar(recorder.list());
+  try {
+    fs.writeFileSync(harPath, `${JSON.stringify(har, null, 2)}\n`);
+    process.stdout.write(`Wrote ${har.log.entries.length} entries to ${harPath}\n`);
+  } catch (error) {
+    process.stderr.write(`Could not write ${harPath}: ${error.message}\n`);
+  }
+}
+
 async function main(argv = process.argv.slice(2), env = process.env) {
   let parsed;
   try {
@@ -203,7 +220,7 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     return 0;
   }
 
-  const { sshTarget, inspect, color, ...overrides } = parsed.options;
+  const { sshTarget, inspect, color, harPath, ...overrides } = parsed.options;
   // The network log is on by default; --no-inspect sets it to false.
   const detail = inspect === undefined ? 'compact' : inspect;
 
@@ -234,7 +251,14 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     reporter.start();
   }
 
-  process.stdout.write(banner(server, sshTarget, detail));
+  // A HAR is written from history, so exporting one needs that history kept —
+  // and its bodies — regardless of how little the console log itself shows.
+  if (harPath) {
+    server.recorder.configure({ captureBodies: true, maxEntries: 10000 });
+    server.recorder.setEnabled(true);
+  }
+
+  process.stdout.write(banner(server, sshTarget, detail, harPath));
 
   let shuttingDown = false;
   const shutdown = async (signal) => {
@@ -251,6 +275,7 @@ async function main(argv = process.argv.slice(2), env = process.env) {
       process.stdout.write(`${reporter.formatSummary(server.snapshot())}\n`);
       reporter.stop();
     }
+    if (harPath) writeHar(harPath, server.recorder);
     process.exit(0);
   };
   process.on('SIGINT', () => shutdown('SIGINT'));

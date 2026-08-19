@@ -18,7 +18,8 @@ compile.
 - Host allow/deny lists and a port allowlist
 - Blocks destinations that resolve to private, loopback, and link-local
   addresses, so the workspace cannot use the proxy to poke at your LAN
-- A [traffic inspector](#traffic-inspector) in the VS Code extension
+- A [traffic inspector](#traffic-inspector) — a panel in VS Code, a network log
+  in the terminal, and [HAR export](#export-as-har) for everything else
 
 ## Quick start
 
@@ -98,9 +99,42 @@ node server.js --inspect bodies
 | `--inspect bodies` | Adds decoded bodies as well. |
 | `--no-inspect` | Falls back to plain timestamped log lines, better for piping to a file. |
 | `--no-color` | No ANSI colour. Also honours `NO_COLOR`, and turns itself off when stdout is not a terminal. |
+| `--har <file>` | Write every transaction to a HAR file on exit. See [below](#export-as-har). |
 
 Bodies are decompressed and pretty-printed the same way the panel does it, and
 capped so a large download cannot flood your scrollback.
+
+### Export as HAR
+
+HAR is the interchange format every network tool reads, so exporting one hands
+the traffic to better tools than either of ours:
+
+```bash
+node server.js --har traffic.har
+```
+
+The file is written when the proxy exits. In VS Code, **Gitpod Proxy: Export
+Traffic as HAR** opens a save dialog instead.
+
+Then drag the file into Chrome DevTools' Network panel — you get its waterfall,
+type filters, body search, and copy-as-cURL over your proxy's traffic. Charles,
+Proxyman, and Postman import the same file, and it travels, so you can hand it
+to someone else to look at.
+
+Two things are worth knowing about what comes out:
+
+- **Bodies are decompressed.** gzip, deflate, and brotli are decoded, with
+  `content.compression` reporting the bytes the coding saved. Binary bodies are
+  base64-encoded, as the format expects.
+- **We time policy checks, DNS, and the TCP connect as one phase**, so they are
+  reported as `connect` with `dns` marked unavailable rather than invented.
+  Requests the proxy refused show that time as `blocked`, and carry the rule
+  that stopped them in the entry's comment.
+
+CONNECT tunnels are included, since knowing the workspace reached a host is
+worth keeping, but each one is commented so an empty body is not misread as "no
+data sent". `--har` implies body capture and a larger history than the console
+log alone keeps.
 
 ### In VS Code
 
@@ -216,6 +250,7 @@ src/headers.js             hop-by-hop header handling
 src/ip.js                  IP parsing and classification
 src/traffic-recorder.js    bounded in-memory record of transactions
 src/console-reporter.js    renders that record as the CLI's network log
+src/har.js                 exports that record as HAR 1.2
 src/body-preview.js        decompresses and formats bodies for display
 src/transaction-detail.js  assembles the detail view for one transaction
 src/client-config.js       generates the workspace snippet, shared by both entries
@@ -232,4 +267,5 @@ node --test 'test/*.test.js'
 
 The suite runs the real proxy against real upstream servers on loopback: HTTP
 forwarding, CONNECT tunnelling, authentication, the allow/deny lists, the
-private-network block, and the traffic recording behind the inspector.
+private-network block, the traffic recording behind the inspector, and the
+HAR export against the spec's required fields.

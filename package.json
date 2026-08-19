@@ -52,6 +52,12 @@
         "icon": "$(pulse)"
       },
       {
+        "command": "gitpodProxy.exportHar",
+        "title": "Export Traffic as HAR",
+        "category": "Gitpod Proxy",
+        "icon": "$(save)"
+      },
+      {
         "command": "gitpodProxy.start",
         "title": "Start Proxy",
         "category": "Gitpod Proxy"
