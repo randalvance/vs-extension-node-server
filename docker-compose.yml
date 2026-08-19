@@ -1,0 +1,17 @@
+services:
+  proxy:
+    build: .
+    # Bind to 127.0.0.1 on the host so only this laptop (and anything tunnelled
+    # into it) can reach the proxy. Drop the "127.0.0.1:" prefix only if you
+    # also set PROXY_USERNAME and PROXY_PASSWORD below.
+    ports:
+      - "127.0.0.1:8899:8899"
+    environment:
+      PROXY_HOST: 0.0.0.0
+      PROXY_PORT: "8899"
+      PROXY_LOG_LEVEL: info
+      # PROXY_USERNAME: gitpod
+      # PROXY_PASSWORD: change-me
+      # PROXY_ALLOW_HOSTS: "*.github.com,*.npmjs.org,registry.npmjs.org"
+      PROXY_ALLOW_UNAUTHENTICATED_REMOTE: "true"
+    restart: unless-stopped

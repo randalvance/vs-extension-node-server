@@ -1,0 +1,201 @@
+{
+  "name": "gitpod-egress-proxy",
+  "displayName": "Gitpod Egress Proxy",
+  "description": "Run an HTTP/HTTPS forward proxy on this machine so a Gitpod/Ona workspace can reach the internet through it.",
+  "version": "1.0.0",
+  "publisher": "local",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0",
+    "node": ">=18"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "proxy",
+    "gitpod",
+    "ona",
+    "tunnel",
+    "egress"
+  ],
+  "main": "./extension.js",
+  "bin": {
+    "gitpod-egress-proxy": "./server.js"
+  },
+  "files": [
+    "server.js",
+    "extension.js",
+    "inspector-panel.js",
+    "media/",
+    "src/",
+    "docs/",
+    "README.md"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {},
+  "contributes": {
+    "commands": [
+      {
+        "command": "gitpodProxy.showInspector",
+        "title": "Open Traffic Inspector",
+        "category": "Gitpod Proxy",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "gitpodProxy.start",
+        "title": "Start Proxy",
+        "category": "Gitpod Proxy"
+      },
+      {
+        "command": "gitpodProxy.stop",
+        "title": "Stop Proxy",
+        "category": "Gitpod Proxy"
+      },
+      {
+        "command": "gitpodProxy.restart",
+        "title": "Restart Proxy",
+        "category": "Gitpod Proxy"
+      },
+      {
+        "command": "gitpodProxy.showMenu",
+        "title": "Show Menu",
+        "category": "Gitpod Proxy"
+      },
+      {
+        "command": "gitpodProxy.copyWorkspaceConfig",
+        "title": "Copy Workspace Configuration",
+        "category": "Gitpod Proxy"
+      },
+      {
+        "command": "gitpodProxy.copyTunnelCommand",
+        "title": "Copy SSH Tunnel Command",
+        "category": "Gitpod Proxy"
+      },
+      {
+        "command": "gitpodProxy.showStats",
+        "title": "Show Traffic Stats",
+        "category": "Gitpod Proxy"
+      },
+      {
+        "command": "gitpodProxy.showLog",
+        "title": "Show Log",
+        "category": "Gitpod Proxy"
+      },
+      {
+        "command": "gitpodProxy.setPassword",
+        "title": "Set Proxy Password",
+        "category": "Gitpod Proxy"
+      },
+      {
+        "command": "gitpodProxy.clearPassword",
+        "title": "Clear Proxy Password",
+        "category": "Gitpod Proxy"
+      }
+    ],
+    "configuration": {
+      "title": "Gitpod Egress Proxy",
+      "properties": {
+        "gitpodProxy.host": {
+          "type": "string",
+          "default": "127.0.0.1",
+          "markdownDescription": "Address to bind. Keep `127.0.0.1` and reach the proxy through an SSH reverse tunnel. Binding a LAN address exposes the proxy to your whole network and requires a username and password."
+        },
+        "gitpodProxy.port": {
+          "type": "number",
+          "default": 8899,
+          "minimum": 0,
+          "maximum": 65535,
+          "description": "Port to listen on. Use 0 to let the operating system choose a free port."
+        },
+        "gitpodProxy.username": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Username for Basic proxy authentication. Leave empty to run without authentication. The password is stored separately via the **Gitpod Proxy: Set Proxy Password** command, not in settings."
+        },
+        "gitpodProxy.allowPrivateNetworks": {
+          "type": "boolean",
+          "default": false,
+          "description": "Permit the workspace to reach private, loopback, and link-local addresses on this machine and its LAN. Off by default."
+        },
+        "gitpodProxy.allowHosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "If non-empty, only these destination hosts are reachable. `*.example.com` matches the domain and its subdomains."
+        },
+        "gitpodProxy.denyHosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Destination hosts to always refuse. Checked before the allowlist. `*.example.com` matches the domain and its subdomains."
+        },
+        "gitpodProxy.allowPorts": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "default": [],
+          "description": "If non-empty, only these destination ports are reachable. Empty permits any port."
+        },
+        "gitpodProxy.logLevel": {
+          "type": "string",
+          "enum": [
+            "silent",
+            "error",
+            "warn",
+            "info",
+            "debug"
+          ],
+          "default": "info",
+          "description": "Verbosity of the proxy's output channel."
+        },
+        "gitpodProxy.autoStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "Start the proxy automatically when this window finishes loading."
+        },
+        "gitpodProxy.sshTarget": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Workspace SSH target used in the generated tunnel command, for example `user@workspace.ssh.gitpod.io`."
+        },
+        "gitpodProxy.inspector.captureBodies": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture request and response bodies so the inspector can show them. Turn off to record only headers, status, and timing."
+        },
+        "gitpodProxy.inspector.maxBodyBytes": {
+          "type": "number",
+          "default": 262144,
+          "minimum": 0,
+          "description": "Largest amount of any single body to keep in memory. Bodies beyond this are shown truncated."
+        },
+        "gitpodProxy.inspector.maxTransactions": {
+          "type": "number",
+          "default": 500,
+          "minimum": 10,
+          "description": "How many recent transactions to keep. Older ones are dropped as new traffic arrives."
+        },
+        "gitpodProxy.allowUnauthenticatedRemote": {
+          "type": "boolean",
+          "default": false,
+          "description": "Permit binding a non-loopback address without a username and password. Leave off unless you understand the exposure."
+        }
+      }
+    }
+  }
+}

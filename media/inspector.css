@@ -1,0 +1,382 @@
+/*
+ * Styled entirely with VS Code's theme variables so the panel follows whatever
+ * theme the user has, light or dark, without shipping its own palette.
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------------------ toolbar */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+  background: var(--vscode-sideBar-background, transparent);
+}
+
+.toolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  background: var(--vscode-button-secondaryBackground, rgba(128, 128, 128, 0.18));
+  cursor: pointer;
+}
+
+.toolbar button:hover {
+  background: var(--vscode-button-secondaryHoverBackground, rgba(128, 128, 128, 0.3));
+}
+
+.toolbar .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--vscode-charts-red, #e51400);
+}
+
+.toolbar button.paused .dot {
+  background: var(--vscode-descriptionForeground, #999);
+}
+
+.toolbar input[type='search'] {
+  flex: 1 1 220px;
+  min-width: 120px;
+  max-width: 460px;
+  padding: 3px 8px;
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+}
+
+.toolbar input[type='search']:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  color: var(--vscode-descriptionForeground);
+}
+
+.divider {
+  width: 1px;
+  height: 18px;
+  background: var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.counts {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* ------------------------------------------------------------------- layout */
+
+.layout {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.list-pane {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 240px;
+  overflow: auto;
+}
+
+.splitter {
+  flex: 0 0 5px;
+  cursor: col-resize;
+  background: var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+}
+
+.splitter:hover,
+.splitter:focus {
+  background: var(--vscode-focusBorder);
+  outline: none;
+}
+
+.detail-pane {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 460px;
+  min-width: 280px;
+  overflow: hidden;
+}
+
+/* -------------------------------------------------------------- request list */
+
+table.requests {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  /* Fixed layout so a long path truncates instead of shoving Size and Time off
+     the edge. The min-width keeps every column readable once the pane gets
+     narrow — the pane scrolls horizontally rather than collapsing a column. */
+  table-layout: fixed;
+  min-width: 620px;
+}
+
+table.requests th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 4px 8px;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--vscode-descriptionForeground);
+  background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+}
+
+table.requests td {
+  padding: 3px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.15));
+}
+
+table.requests tbody tr {
+  cursor: pointer;
+}
+
+table.requests tbody tr:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+table.requests tbody tr.selected {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+.col-status { width: 62px; }
+.col-method { width: 70px; }
+.col-host   { width: 26%; }
+.col-path   { width: auto; }
+.col-size   { width: 74px; text-align: right; }
+.col-time   { width: 70px; text-align: right; }
+
+td.col-size,
+td.col-time {
+  text-align: right;
+}
+
+.status-ok      { color: var(--vscode-charts-green, #388a34); }
+.status-redirect{ color: var(--vscode-charts-blue, #1a85ff); }
+.status-error   { color: var(--vscode-charts-red, #e51400); }
+.status-pending { color: var(--vscode-descriptionForeground); }
+.status-tunnel  { color: var(--vscode-charts-purple, #a074c4); }
+
+tr.selected .status-ok,
+tr.selected .status-redirect,
+tr.selected .status-error,
+tr.selected .status-pending,
+tr.selected .status-tunnel {
+  color: inherit;
+}
+
+.method {
+  font-weight: 600;
+}
+
+.empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* ------------------------------------------------------------- detail pane */
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.detail-header {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+}
+
+.detail-header .url {
+  overflow-wrap: anywhere;
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+
+.tabs {
+  display: flex;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+}
+
+.tab {
+  padding: 6px 12px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--vscode-descriptionForeground);
+  background: none;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--vscode-foreground);
+}
+
+.tab.active {
+  color: var(--vscode-foreground);
+  border-bottom-color: var(--vscode-focusBorder);
+}
+
+.tab-panels {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.panel {
+  display: none;
+  padding: 10px 12px;
+}
+
+.panel.active {
+  display: block;
+}
+
+.panel h3 {
+  margin: 14px 0 6px;
+  font-size: inherit;
+  color: var(--vscode-descriptionForeground);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.panel h3:first-child {
+  margin-top: 0;
+}
+
+dl.headers {
+  display: grid;
+  grid-template-columns: minmax(90px, max-content) 1fr;
+  gap: 2px 12px;
+  margin: 0;
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+
+dl.headers dt {
+  color: var(--vscode-symbolIcon-propertyForeground, var(--vscode-descriptionForeground));
+  overflow-wrap: anywhere;
+}
+
+dl.headers dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+pre.body {
+  margin: 0;
+  padding: 8px;
+  max-height: none;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--vscode-editor-font-family, monospace);
+  background: var(--vscode-textCodeBlock-background, rgba(128, 128, 128, 0.1));
+  border-radius: 3px;
+}
+
+.note {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--vscode-charts-blue, #1a85ff);
+  color: var(--vscode-descriptionForeground);
+  background: var(--vscode-textBlockQuote-background, rgba(128, 128, 128, 0.1));
+}
+
+.note.warning {
+  border-left-color: var(--vscode-charts-orange, #d18616);
+}
+
+.note.error {
+  border-left-color: var(--vscode-charts-red, #e51400);
+}
+
+/* Timing bars ------------------------------------------------------------- */
+
+.timing-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 70px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.timing-label {
+  color: var(--vscode-descriptionForeground);
+}
+
+.timing-track {
+  height: 10px;
+  border-radius: 2px;
+  background: var(--vscode-textCodeBlock-background, rgba(128, 128, 128, 0.15));
+}
+
+.timing-bar {
+  height: 100%;
+  min-width: 2px;
+  border-radius: 2px;
+  background: var(--vscode-charts-blue, #1a85ff);
+}
+
+.timing-bar.blocked  { background: var(--vscode-charts-orange, #d18616); }
+.timing-bar.waiting  { background: var(--vscode-charts-purple, #a074c4); }
+.timing-bar.download { background: var(--vscode-charts-green, #388a34); }
+
+.timing-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,9 @@
+.vscode/**
+test/**
+scripts/**
+docs/**
+Dockerfile
+docker-compose.yml
+.gitignore
+.git/**
+**/*.log

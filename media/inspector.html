@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src {{cspSource}}; script-src 'nonce-{{nonce}}';"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="{{styleUri}}" rel="stylesheet" />
+    <title>Proxy Traffic</title>
+  </head>
+  <body>
+    <header class="toolbar">
+      <button id="record" class="toggle" type="button" title="Pause or resume recording">
+        <span class="dot"></span><span id="record-label">Recording</span>
+      </button>
+      <button id="clear" type="button" title="Clear all captured traffic">Clear</button>
+      <span class="divider" role="separator"></span>
+      <input id="filter" type="search" placeholder="Filter by host, path, method, or status" />
+      <label class="check">
+        <input id="errors-only" type="checkbox" />
+        Errors &amp; blocked only
+      </label>
+      <span class="spacer"></span>
+      <span id="counts" class="counts"></span>
+    </header>
+
+    <main class="layout">
+      <section class="list-pane" aria-label="Requests">
+        <table class="requests">
+          <thead>
+            <tr>
+              <th class="col-status">Status</th>
+              <th class="col-method">Method</th>
+              <th class="col-host">Host</th>
+              <th class="col-path">Path</th>
+              <th class="col-size">Size</th>
+              <th class="col-time">Time</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <p id="empty" class="empty">
+          No traffic yet. Requests appear here as the workspace makes them.
+        </p>
+      </section>
+
+      <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" tabindex="0"></div>
+
+      <section class="detail-pane" aria-label="Details">
+        <div id="detail-empty" class="empty">Select a request to inspect it.</div>
+
+        <div id="detail" class="detail" hidden>
+          <div class="detail-header">
+            <span id="detail-method" class="method"></span>
+            <span id="detail-url" class="url"></span>
+          </div>
+
+          <nav class="tabs" role="tablist">
+            <button class="tab active" data-tab="headers" role="tab" type="button">Headers</button>
+            <button class="tab" data-tab="request" role="tab" type="button">Request</button>
+            <button class="tab" data-tab="response" role="tab" type="button">Response</button>
+            <button class="tab" data-tab="timing" role="tab" type="button">Timing</button>
+          </nav>
+
+          <div class="tab-panels">
+            <div class="panel active" data-panel="headers"></div>
+            <div class="panel" data-panel="request"></div>
+            <div class="panel" data-panel="response"></div>
+            <div class="panel" data-panel="timing"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script nonce="{{nonce}}" src="{{scriptUri}}"></script>
+  </body>
+</html>
