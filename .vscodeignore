@@ -1,9 +1,13 @@
+.github/**
 .vscode/**
+.claude/**
 test/**
 scripts/**
 docs/**
 Dockerfile
 docker-compose.yml
 .gitignore
+.vscodeignore
 .git/**
 **/*.log
+**/*.vsix

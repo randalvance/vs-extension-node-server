@@ -5,6 +5,14 @@
   "version": "1.0.0",
   "publisher": "local",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/randalvance/vs-extension-node-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/randalvance/vs-extension-node-server/issues"
+  },
+  "homepage": "https://github.com/randalvance/vs-extension-node-server#readme",
   "engines": {
     "vscode": "^1.75.0",
     "node": ">=18"
@@ -23,15 +31,6 @@
   "bin": {
     "gitpod-egress-proxy": "./server.js"
   },
-  "files": [
-    "server.js",
-    "extension.js",
-    "inspector-panel.js",
-    "media/",
-    "src/",
-    "docs/",
-    "README.md"
-  ],
   "extensionKind": [
     "ui"
   ],

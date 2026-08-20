@@ -25,6 +25,15 @@ compile.
 
 ### As a VS Code extension (no Node.js needed)
 
+Install the packaged extension from the
+[latest release](https://github.com/randalvance/vs-extension-node-server/releases/latest):
+
+```bash
+code --install-extension gitpod-egress-proxy-<version>.vsix
+```
+
+Or install straight from a checkout, which needs no build step at all:
+
 ```bash
 ./scripts/install-vscode-extension.sh
 ```
@@ -279,3 +288,22 @@ The suite runs the real proxy against real upstream servers on loopback: HTTP
 forwarding, CONNECT tunnelling, authentication, the allow/deny lists, the
 private-network block, the traffic recording behind the inspector, and the
 HAR export against the spec's required fields.
+
+## Releasing
+
+Pushing a `v*` tag builds the extension, runs the tests, and attaches the
+`.vsix` to a GitHub release of the same name:
+
+```bash
+npm version patch && git push --follow-tags
+```
+
+`npm version` bumps `package.json` and creates the matching tag in one step,
+which matters: the workflow refuses to release if the tag and the manifest
+version disagree, rather than shipping a `.vsix` whose internal version
+contradicts its release. A tag with a hyphen — `v1.1.0-rc.1` — is published as
+a prerelease.
+
+To exercise packaging without spending a version number, run the **Release**
+workflow manually from the Actions tab; it builds and uploads the `.vsix` as a
+build artifact and creates no release.

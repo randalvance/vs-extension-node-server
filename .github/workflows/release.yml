@@ -1,0 +1,136 @@
+name: Release
+
+# Tagging is the trigger: push v1.2.3 and the extension is packaged, tested,
+# and attached to a GitHub release of the same name.
+#
+#   npm version patch      # bumps package.json and creates the tag
+#   git push --follow-tags
+#
+# workflow_dispatch builds the same .vsix without releasing, so you can try a
+# packaging change without burning a version number.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Package and release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          # No cache: the project has no dependencies and no lockfile, so
+          # setup-node's npm cache would have nothing to restore.
+
+      - name: Check the tag against package.json
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          pkg_version="$(node -p "require('./package.json').version")"
+          if [ "$tag_version" != "$pkg_version" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} implies version ${tag_version}, but package.json says ${pkg_version}. Bump the manifest or retag."
+            exit 1
+          fi
+          echo "Releasing version ${pkg_version}"
+
+      - name: Run tests
+        run: node --test test/*.test.js
+
+      - name: Package the extension
+        id: package
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          name="$(node -p "require('./package.json').name")"
+          vsix="${name}-${version}.vsix"
+
+          # --no-dependencies: there are none, and it stops vsce looking for a
+          # node_modules tree that this project never has.
+          npx --yes @vscode/vsce@3.9.2 package --no-dependencies --out "$vsix"
+
+          echo "vsix=$vsix" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$vsix" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the package installs and contains what it should
+        run: |
+          vsix="${{ steps.package.outputs.vsix }}"
+
+          # A .vsix is a zip. List it once into a variable rather than piping
+          # into `grep -q` per entry: grep exits on first match, unzip takes
+          # SIGPIPE, and under `set -o pipefail` that reads as a failure even
+          # though the file was found.
+          listing="$(unzip -l "$vsix")"
+          echo "$listing"
+
+          for required in extension/package.json extension/extension.js \
+                          extension/src/proxy.js extension/media/inspector.js; do
+            case "$listing" in
+              *"$required"*) ;;
+              *) echo "::error::$required missing from $vsix"; exit 1 ;;
+            esac
+          done
+
+          # Nothing that only belongs in the repo should be inside the package.
+          case "$listing" in
+            *extension/.github/*|*extension/test/*|*extension/.vscode/*)
+              echo "::error::$vsix contains repo-only files; check .vscodeignore"
+              exit 1 ;;
+          esac
+
+      - name: Upload the .vsix as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.vsix }}
+          path: ${{ steps.package.outputs.vsix }}
+          if-no-files-found: error
+
+      - name: Create the release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VSIX: ${{ steps.package.outputs.vsix }}
+          VERSION: ${{ steps.package.outputs.version }}
+          SHA256: ${{ steps.package.outputs.sha256 }}
+        run: |
+          cat > release-notes.md <<NOTES
+          ### Install
+
+          Download \`${VSIX}\` below, then:
+
+          \`\`\`bash
+          code --install-extension ${VSIX}
+          \`\`\`
+
+          Or in VS Code: **Extensions** → **...** → **Install from VSIX...**
+
+          The extension has no runtime dependencies and nothing to compile — it
+          runs on the Node.js bundled with VS Code, so it works on a machine
+          with no SDK installed.
+
+          \`\`\`
+          SHA-256  ${SHA256}
+          \`\`\`
+          NOTES
+
+          # A tag like v1.2.0-rc.1 is a prerelease; v1.2.0 is not.
+          prerelease=""
+          case "$GITHUB_REF_NAME" in
+            *-*) prerelease="--prerelease" ;;
+          esac
+
+          gh release create "$GITHUB_REF_NAME" "$VSIX" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            --generate-notes \
+            --verify-tag \
+            $prerelease
