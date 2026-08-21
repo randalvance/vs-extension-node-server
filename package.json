@@ -3,7 +3,7 @@
   "displayName": "Gitpod Egress Proxy",
   "description": "Run an HTTP/HTTPS forward proxy on this machine so a Gitpod/Ona workspace can reach the internet through it.",
   "version": "1.0.0",
-  "publisher": "local",
+  "publisher": "randal-tech",
   "license": "MIT",
   "repository": {
     "type": "git",

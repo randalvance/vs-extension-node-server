@@ -55,7 +55,18 @@ if [[ -z "$PUBLISHER" || -z "$NAME" || -z "$VERSION" ]]; then
 fi
 
 mkdir -p "$EXT_DIR"
-rm -rf "$DEST"
+
+# Clear any previous install of this extension, whatever publisher or version
+# it carried. Leaving one behind means two copies activate at once and race for
+# the same port — which is exactly what a publisher rename would cause.
+shopt -s nullglob
+for stale in "$EXT_DIR"/*."$NAME"-*; do
+  [[ -d "$stale" ]] || continue
+  echo "Removing previous install: $(basename "$stale")"
+  rm -rf "$stale"
+done
+shopt -u nullglob
+
 mkdir -p "$DEST"
 
 cp -R \
